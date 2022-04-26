@@ -75,4 +75,5 @@ public class PostController {
         model.addAttribute("postRespDto", postRespDto);
         return "/post/list";
     }
+
 }
