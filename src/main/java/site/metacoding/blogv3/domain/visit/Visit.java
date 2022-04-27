@@ -44,4 +44,8 @@ public class Visit {
     @LastModifiedDate // update 할때만 동작
     private LocalDateTime updateDate;
 
+    // public void saveOrUpdate(VisitRepository visitRepository) {
+    // // 상황일 때 insert
+    // // 상황일 때 update
+    // }
 }
