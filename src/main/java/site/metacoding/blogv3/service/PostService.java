@@ -24,6 +24,7 @@ import site.metacoding.blogv3.domain.visit.VisitRepository;
 import site.metacoding.blogv3.handler.ex.CustomApiException;
 import site.metacoding.blogv3.handler.ex.CustomException;
 import site.metacoding.blogv3.util.UtilFileUpload;
+import site.metacoding.blogv3.web.dto.post.PostDetailRespDto;
 import site.metacoding.blogv3.web.dto.post.PostRespDto;
 import site.metacoding.blogv3.web.dto.post.PostWriteReqDto;
 
@@ -61,11 +62,15 @@ public class PostService {
     }
 
     @Transactional
-    public Post 게시글상세보기(Integer id) {
+    public PostDetailRespDto 게시글상세보기(Integer id) {
         Optional<Post> postOp = postRepository.findById(id);
+        PostDetailRespDto postDetailRespDto = new PostDetailRespDto();
 
         if (postOp.isPresent()) {
             Post postEntity = postOp.get();
+            postDetailRespDto.setPost(postEntity);
+
+            postDetailRespDto.setPageOwner(false);
 
             // 방문자 카운터 증가
             Optional<Visit> visitOp = visitRepository.findById(postEntity.getUser().getId());
@@ -83,7 +88,55 @@ public class PostService {
                 throw new CustomException("일시적 문제가 발생했습니다. 관리자에게 문의해주세요.");
             }
 
-            return postEntity;
+            return postDetailRespDto;
+        } else {
+            throw new CustomException("해당 게시글을 찾을 수 없습니다");
+        }
+    }
+
+    @Transactional
+    public PostDetailRespDto 게시글상세보기(Integer id, User principal) {
+        Optional<Post> postOp = postRepository.findById(id);
+        PostDetailRespDto postDetailRespDto = new PostDetailRespDto();
+
+        // 해당 페이지의 postId를 찾는다
+        // Integer postId = id; (필요X)
+        // 그 페이지의 주인 userId가 무엇인지 알아야 한다
+        Integer pageOwnerId = null;
+
+        // 로그인한 사용자의 userId를 알아야 한다
+        Integer loginUserId = principal.getId();
+
+        if (postOp.isPresent()) {
+            Post postEntity = postOp.get();
+            postDetailRespDto.setPost(postEntity);
+
+            pageOwnerId = postEntity.getUser().getId();
+
+            // 두 userId를 비교해서 동일하면 isPageOwner에 true를 추가
+            if (pageOwnerId == loginUserId) {
+                postDetailRespDto.setPageOwner(true);
+            } else {
+                postDetailRespDto.setPageOwner(false);
+            }
+
+            // 방문자 카운터 증가
+            Optional<Visit> visitOp = visitRepository.findById(postEntity.getUser().getId());
+            if (visitOp.isPresent()) {
+
+                Visit visitEntity = visitOp.get();
+                Long totalCount = visitEntity.getTotalCount();
+                visitEntity.setTotalCount(totalCount + 1);
+
+            } else { // 엄청 심각한 오류
+                log.error("미친 심각", "회원가입할 때 Visit이 안 만들어지는 심각한 오류가 있습니다");
+                // sms 메시지 전송
+                // email 전송
+                // file에 쓰기
+                throw new CustomException("일시적 문제가 발생했습니다. 관리자에게 문의해주세요.");
+            }
+
+            return postDetailRespDto;
         } else {
             throw new CustomException("해당 게시글을 찾을 수 없습니다");
         }
